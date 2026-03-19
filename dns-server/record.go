@@ -1,0 +1,86 @@
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"strings"
+)
+
+type Record struct {
+	Name  string
+	Type  uint16
+	Class uint16
+	TTL   uint32
+	Data  string
+}
+
+func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
+	name, err := readName(r, packet)
+	if err != nil {
+		return Record{}, err
+	}
+
+	var rtype, class, rdlen uint16
+	var ttl uint32
+	_ = binary.Read(r, binary.BigEndian, &rtype)
+	_ = binary.Read(r, binary.BigEndian, &class)
+	_ = binary.Read(r, binary.BigEndian, &ttl)
+	_ = binary.Read(r, binary.BigEndian, &rdlen)
+
+	var data string
+	switch rtype {
+	case 1: // A
+		var ip [4]byte
+		_, _ = r.Read(ip[:])
+		data = fmt.Sprintf("%d.%d.%d.%d",
+			ip[0], ip[1], ip[2], ip[3])
+
+	default:
+		buf := make([]byte, rdlen)
+		_, _ = r.Read(buf)
+		data = fmt.Sprintf("%x", buf)
+	}
+
+	return Record{
+		Name:  name,
+		Type:  rtype,
+		Class: class,
+		TTL:   ttl,
+		Data:  data,
+	}, nil
+}
+
+func readName(r *bytes.Reader, packet []byte) (string, error) {
+	var labels []string
+	for {
+		length, err := r.ReadByte()
+		if err != nil {
+			return "", err
+		}
+		if length == 0 {
+			break
+		}
+		// pointer: top two bits set (0xC0)
+		if length&0xC0 == 0xC0 {
+			low, err := r.ReadByte()
+			if err != nil {
+				return "", err
+			}
+			offset := int(uint16(length&0x3F)<<8 | uint16(low))
+			sub := bytes.NewReader(packet[offset:])
+			name, err := readName(sub, packet)
+			if err != nil {
+				return "", err
+			}
+			labels = append(labels, name)
+			break // pointer always ends the name
+		}
+		buf := make([]byte, length)
+		if _, err := r.Read(buf); err != nil {
+			return "", err
+		}
+		labels = append(labels, string(buf))
+	}
+	return strings.Join(labels, "."), nil
+}

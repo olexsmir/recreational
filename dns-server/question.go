@@ -27,3 +27,10 @@ func ReadQuestion(r *bytes.Reader, packet []byte) (Question, error) {
 		Class: qclass,
 	}, nil
 }
+
+func (q Question) Write(b *bytes.Buffer) error {
+	_ = writeName(b, q.Name)
+	_ = binary.Write(b, binary.BigEndian, q.Type)
+	_ = binary.Write(b, binary.BigEndian, q.Class)
+	return nil
+}

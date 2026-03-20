@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type ResultCode uint
+type ResultCode = uint8
 
 const (
 	NOERROR ResultCode = iota
@@ -65,6 +65,28 @@ func ReadHeader(r *bytes.Reader) (Header, error) {
 	return h, nil
 }
 
+func (h *Header) Write(b *bytes.Buffer) error {
+	_ = binary.Write(b, binary.BigEndian, h.ID)
+
+	_ = b.WriteByte((b2u8(h.RecursionDesired)) |
+		(b2u8(h.TruncatedMessage) << 1) |
+		(b2u8(h.AuthoritativeAnswer) << 2) |
+		(h.OPCode << 3) |
+		(b2u8(h.Response) << 7))
+
+	_ = b.WriteByte(h.Rescode |
+		(b2u8(h.CheckingDisabled) << 4) |
+		(b2u8(h.AuthedData) << 5) |
+		(b2u8(h.Z) << 6) |
+		(b2u8(h.RecursionAvailable) << 7))
+
+	_ = binary.Write(b, binary.BigEndian, h.Questions)
+	_ = binary.Write(b, binary.BigEndian, h.Answers)
+	_ = binary.Write(b, binary.BigEndian, h.AuthoritativeEntries)
+	_ = binary.Write(b, binary.BigEndian, h.ResourceEntries)
+	return nil
+}
+
 func (h *Header) unpackFlags(flags uint16) {
 	h.RecursionDesired = flags&(1<<8) != 0
 	h.TruncatedMessage = flags&(1<<9) != 0
@@ -107,4 +129,11 @@ func (h Header) packFlags() uint16 {
 		flags |= 1 << 7
 	}
 	return flags
+}
+
+func b2u8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
 }

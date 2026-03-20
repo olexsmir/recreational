@@ -21,7 +21,6 @@ func ParsePacket(packet []byte) (Packet, error) {
 		return Packet{}, err
 	}
 
-	// TODO: don't do int(Questions) ????
 	for i := 0; i < int(p.Header.Questions); i++ {
 		q, err := ReadQuestion(r, packet)
 		if err != nil {
@@ -55,4 +54,30 @@ func ParsePacket(packet []byte) (Packet, error) {
 	}
 
 	return p, nil
+}
+
+func (p *Packet) Write(b *bytes.Buffer) error {
+	p.Header.Questions = uint16(len(p.Questions))
+	p.Header.Answers = uint16(len(p.Answers))
+	p.Header.AuthoritativeEntries = uint16(len(p.Authorities))
+	p.Header.ResourceEntries = uint16(len(p.Resources))
+	_ = p.Header.Write(b)
+
+	for i := range p.Questions {
+		_ = p.Questions[i].Write(b)
+	}
+
+	for i := range p.Answers {
+		_, _ = p.Answers[i].Write(b)
+	}
+
+	for i := range p.Authorities {
+		_, _ = p.Authorities[i].Write(b)
+	}
+
+	for i := range p.Resources {
+		_, _ = p.Resources[i].Write(b)
+	}
+
+	return nil
 }

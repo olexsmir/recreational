@@ -8,9 +8,19 @@ import (
 	"strings"
 )
 
+type QueryType uint16
+
+const (
+	AType     QueryType = 1
+	NSType    QueryType = 2
+	CNAMEType QueryType = 5
+	MXType    QueryType = 15
+	AAAAType  QueryType = 28
+)
+
 type Record struct {
 	Name  string
-	Type  uint16
+	Type  QueryType
 	Class uint16
 	TTL   uint32
 	Data  string
@@ -22,7 +32,8 @@ func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
 		return Record{}, err
 	}
 
-	var rtype, class, rdlen uint16
+	var rtype QueryType
+	var class, rdlen uint16
 	var ttl uint32
 	_ = binary.Read(r, binary.BigEndian, &rtype)
 	_ = binary.Read(r, binary.BigEndian, &class)
@@ -31,7 +42,7 @@ func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
 
 	var data string
 	switch rtype {
-	case 1: // A
+	case AType:
 		var ip [4]byte
 		_, _ = r.Read(ip[:])
 		data = fmt.Sprintf("%d.%d.%d.%d",
@@ -55,7 +66,7 @@ func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
 func (r Record) Write(b *bytes.Buffer) (int, error) {
 	start := b.Len()
 	switch r.Type {
-	case 1: // A
+	case AType:
 		_ = writeName(b, r.Name)
 		_ = binary.Write(b, binary.BigEndian, r.Type)
 		_ = binary.Write(b, binary.BigEndian, r.Class)

@@ -84,10 +84,7 @@ func (r Record) Write(b *bytes.Buffer) (int, error) {
 	start := b.Len()
 	switch r.Type {
 	case AType:
-		_ = writeName(b, r.Name)
-		_ = binary.Write(b, binary.BigEndian, r.Type)
-		_ = binary.Write(b, binary.BigEndian, r.Class)
-		_ = binary.Write(b, binary.BigEndian, r.TTL)
+		_ = r.writePremable(b)
 		_ = binary.Write(b, binary.BigEndian, uint16(4))
 
 		ip := net.ParseIP(r.Data).To4()
@@ -98,10 +95,7 @@ func (r Record) Write(b *bytes.Buffer) (int, error) {
 		_, _ = b.Write(ip)
 
 	case AAAAType:
-		_ = writeName(b, r.Name)
-		_ = binary.Write(b, binary.BigEndian, r.Type)
-		_ = binary.Write(b, binary.BigEndian, r.Class)
-		_ = binary.Write(b, binary.BigEndian, r.TTL)
+		_ = r.writePremable(b)
 		_ = binary.Write(b, binary.BigEndian, uint16(16))
 
 		ip := net.ParseIP(r.Data).To16()
@@ -112,20 +106,14 @@ func (r Record) Write(b *bytes.Buffer) (int, error) {
 		_, _ = b.Write(ip)
 
 	case NSType, CNAMEType:
-		_ = writeName(b, r.Name)
-		_ = binary.Write(b, binary.BigEndian, r.Type)
-		_ = binary.Write(b, binary.BigEndian, r.Class)
-		_ = binary.Write(b, binary.BigEndian, r.TTL)
+		_ = r.writePremable(b)
 
 		encoded := encodeName(r.Data)
 		_ = binary.Write(b, binary.BigEndian, uint16(len(encoded)))
 		_, _ = b.Write(encoded)
 
 	case MXType:
-		_ = writeName(b, r.Name)
-		_ = binary.Write(b, binary.BigEndian, r.Type)
-		_ = binary.Write(b, binary.BigEndian, r.Class)
-		_ = binary.Write(b, binary.BigEndian, r.TTL)
+		_ = r.writePremable(b)
 
 		encoded := encodeName(r.Data)
 		_ = binary.Write(b, binary.BigEndian, uint16(2+len(encoded)))
@@ -137,6 +125,15 @@ func (r Record) Write(b *bytes.Buffer) (int, error) {
 	}
 
 	return b.Len() - start, nil
+}
+
+func (r Record) writePremable(b *bytes.Buffer) error {
+	// TODO: errors
+	_ = writeName(b, r.Name)
+	_ = binary.Write(b, binary.BigEndian, r.Type)
+	_ = binary.Write(b, binary.BigEndian, r.Class)
+	_ = binary.Write(b, binary.BigEndian, r.TTL)
+	return nil
 }
 
 func readName(r *bytes.Reader, packet []byte) (string, error) {

@@ -19,11 +19,12 @@ const (
 )
 
 type Record struct {
-	Name  string
-	Type  QueryType
-	Class uint16
-	TTL   uint32
-	Data  string
+	Name     string
+	Type     QueryType
+	Class    uint16
+	TTL      uint32
+	Data     string
+	Priority uint16
 }
 
 func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
@@ -41,12 +42,27 @@ func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
 	_ = binary.Read(r, binary.BigEndian, &rdlen)
 
 	var data string
+	var priority uint16
 	switch rtype {
 	case AType:
 		var ip [4]byte
 		_, _ = r.Read(ip[:])
-		data = fmt.Sprintf("%d.%d.%d.%d",
-			ip[0], ip[1], ip[2], ip[3])
+		data = net.IP(ip[:]).String()
+
+	case AAAAType:
+		var ip [16]byte
+		_, _ = r.Read(ip[:])
+		data = net.IP(ip[:]).String()
+
+	case NSType, CNAMEType:
+		data, _ = readName(r, packet)
+
+	case MXType:
+		var pri uint16
+		_ = binary.Read(r, binary.BigEndian, &pri)
+		host, _ := readName(r, packet)
+		priority = pri
+		data = host
 
 	default:
 		buf := make([]byte, rdlen)
@@ -55,11 +71,12 @@ func ReadRecord(r *bytes.Reader, packet []byte) (Record, error) {
 	}
 
 	return Record{
-		Name:  name,
-		Type:  rtype,
-		Class: class,
-		TTL:   ttl,
-		Data:  data,
+		Name:     name,
+		Type:     rtype,
+		Class:    class,
+		TTL:      ttl,
+		Data:     data,
+		Priority: priority,
 	}, nil
 }
 
@@ -79,6 +96,41 @@ func (r Record) Write(b *bytes.Buffer) (int, error) {
 		}
 
 		_, _ = b.Write(ip)
+
+	case AAAAType:
+		_ = writeName(b, r.Name)
+		_ = binary.Write(b, binary.BigEndian, r.Type)
+		_ = binary.Write(b, binary.BigEndian, r.Class)
+		_ = binary.Write(b, binary.BigEndian, r.TTL)
+		_ = binary.Write(b, binary.BigEndian, uint16(16))
+
+		ip := net.ParseIP(r.Data).To16()
+		if ip == nil {
+			return 0, fmt.Errorf("invalid IPv6 address: %s", r.Data)
+		}
+
+		_, _ = b.Write(ip)
+
+	case NSType, CNAMEType:
+		_ = writeName(b, r.Name)
+		_ = binary.Write(b, binary.BigEndian, r.Type)
+		_ = binary.Write(b, binary.BigEndian, r.Class)
+		_ = binary.Write(b, binary.BigEndian, r.TTL)
+
+		encoded := encodeName(r.Data)
+		_ = binary.Write(b, binary.BigEndian, uint16(len(encoded)))
+		_, _ = b.Write(encoded)
+
+	case MXType:
+		_ = writeName(b, r.Name)
+		_ = binary.Write(b, binary.BigEndian, r.Type)
+		_ = binary.Write(b, binary.BigEndian, r.Class)
+		_ = binary.Write(b, binary.BigEndian, r.TTL)
+
+		encoded := encodeName(r.Data)
+		_ = binary.Write(b, binary.BigEndian, uint16(2+len(encoded)))
+		_ = binary.Write(b, binary.BigEndian, uint16(r.Priority))
+		_, _ = b.Write(encoded)
 
 	default:
 		fmt.Printf("Skipping record: %+v\n", r)
@@ -119,6 +171,16 @@ func readName(r *bytes.Reader, packet []byte) (string, error) {
 		labels = append(labels, string(buf))
 	}
 	return strings.Join(labels, "."), nil
+}
+
+func encodeName(name string) []byte {
+	var b bytes.Buffer
+	for label := range strings.SplitSeq(name, ".") {
+		_ = b.WriteByte(byte(len(label)))
+		_, _ = b.WriteString(label)
+	}
+	_ = b.WriteByte(0)
+	return b.Bytes()
 }
 
 // TODO: wrap the Buffer, to have the len == 512 guard

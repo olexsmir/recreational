@@ -7,7 +7,7 @@ import (
 
 type Question struct {
 	Name  string
-	Type  uint16
+	Type  QueryType
 	Class uint16
 }
 
@@ -23,7 +23,7 @@ func ReadQuestion(r *bytes.Reader, packet []byte) (Question, error) {
 
 	return Question{
 		Name:  name,
-		Type:  qtype,
+		Type:  QueryType(qtype),
 		Class: qclass,
 	}, nil
 }

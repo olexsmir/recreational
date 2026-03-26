@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	qname := "google.com"
+	qname := "olexsmir.xyz"
 	server := "8.8.8.8:53"
 
 	conn, _ := net.Dial("udp", server)
@@ -19,7 +19,7 @@ func main() {
 	p.Header.RecursionDesired = true
 	p.Questions = append(p.Questions, Question{
 		Name:  qname,
-		Type:  1, // A
+		Type:  AType,
 		Class: 1, // IN
 	})
 

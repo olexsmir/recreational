@@ -31,6 +31,9 @@ func TestQueue(t *testing.T) {
 	is(t, ok, true)
 	is(t, v, 11)
 
+	_, ok = q.Pop()
+	is(t, ok, false)
+
 	// everything works after removing all elements
 	q.Push(69420)
 	is(t, q.Peek(), 69420)

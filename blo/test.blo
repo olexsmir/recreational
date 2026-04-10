@@ -1,0 +1,8 @@
+let(myVar, "value123")
+say("Value of just declared var is ", myVar, ";")
+
+define(hello, args(name, city),
+  say("Hello, ", name, " from ", city, "!"),
+  say("Your weather is ", http("https://wttr.in/", city, "?format=4")))
+
+hello(my_name, "Kyiv")

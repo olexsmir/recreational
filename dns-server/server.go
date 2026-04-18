@@ -33,7 +33,7 @@ func HandleQuery(conn *net.UDPConn) error {
 		q := request.Questions[0]
 		fmt.Printf("Received query: %+v\n", q)
 
-		res, rerr := Lookup(q.Name, q.Type)
+		res, rerr := RecursiveLookup(q.Name, q.Type)
 		if rerr != nil {
 			response.Header.Rescode = SERVFAIL
 		} else {

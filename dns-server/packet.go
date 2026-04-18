@@ -1,6 +1,10 @@
 package main
 
-import "bytes"
+import (
+	"bytes"
+	"net"
+	"strings"
+)
 
 type Packet struct {
 	Header      Header
@@ -80,4 +84,43 @@ func (p *Packet) Write(b *bytes.Buffer) error {
 	}
 
 	return nil
+}
+
+func (p Packet) GetRandomA() (net.IP, bool) {
+	for _, r := range p.Answers {
+		if r.Type == AType {
+			return net.ParseIP(r.Data), true
+		}
+	}
+	return nil, false
+}
+
+func (p Packet) GetResolvedNS(qname string) (net.IP, bool) {
+	for _, ns := range p.getNS(qname) {
+		host := ns[1]
+		for _, r := range p.Resources {
+			if r.Type == AType && r.Name == host {
+				return net.ParseIP(r.Data), true
+			}
+		}
+	}
+	return nil, false
+}
+
+func (p Packet) GetUnresolvedNS(qname string) (string, bool) {
+	ns := p.getNS(qname)
+	if len(ns) == 0 {
+		return "", false
+	}
+	return ns[0][1], true
+}
+
+func (p Packet) getNS(qname string) [][2]string {
+	var res [][2]string
+	for _, r := range p.Authorities {
+		if r.Type == NSType && strings.HasPrefix(qname, r.Name) {
+			res = append(res, [2]string{r.Name, r.Data})
+		}
+	}
+	return res
 }

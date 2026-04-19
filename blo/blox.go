@@ -23,7 +23,7 @@ var escope = EvalScope{
 			}
 
 			if args[0].Type != ExprVar {
-				return Expr{}, errors.New("First argument of let() has to be variable name")
+				return Expr{}, errors.New("first argument of let() has to be variable name")
 			}
 
 			name := args[0].AsVar
@@ -35,7 +35,6 @@ var escope = EvalScope{
 			ctx.TopScope().Vars[name] = value
 			return Expr{}, nil
 		},
-
 		"define": func(ctx *EvalContext, args []Expr) (Expr, error) {
 			if len(args) < 2 {
 				return Expr{}, errors.New("define() expects at least 2 arguments")
@@ -64,7 +63,7 @@ var escope = EvalScope{
 				}
 
 				if len(callArgs) != len(funArgs) {
-					return Expr{}, errors.New(fmt.Sprintf("%s(): expected %d arguments but provided %d", funName, len(funArgs), len(args)))
+					return Expr{}, fmt.Errorf("%s(): expected %d arguments but provided %d", funName, len(funArgs), len(args))
 				}
 
 				for index := range callArgs {
@@ -85,7 +84,6 @@ var escope = EvalScope{
 
 			return Expr{}, nil
 		},
-
 		"say": func(context *EvalContext, args []Expr) (Expr, error) {
 			for _, arg := range args {
 				val, err := context.EvalExpr(arg)
@@ -106,7 +104,6 @@ var escope = EvalScope{
 			fmt.Printf("\n")
 			return Expr{}, nil
 		},
-
 		"http": func(context *EvalContext, args []Expr) (Expr, error) {
 			var url strings.Builder
 			for _, arg := range args {
@@ -156,7 +153,6 @@ func main() {
 	}
 
 	lexer := NewLexer([]rune(string(content)), fpath)
-
 	exprs, err := ParseExprs(&lexer)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

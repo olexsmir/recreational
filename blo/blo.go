@@ -313,8 +313,8 @@ func (expr *Expr) String() string {
 }
 
 var (
-	ErrParserUnexpectedToken = errors.New("Parser: Unexpected Token")
-	ErrParserUnclosedFuncall = errors.New("Parser: Unclosed Funcall")
+	ErrParserUnexpectedToken = errors.New("parser: Unexpected Token")
+	ErrParserUnclosedFuncall = errors.New("parser: Unclosed Funcall")
 )
 
 func ParseExpr(l *Lexer) (Expr, error) {
@@ -417,7 +417,7 @@ func ParseExprs(l *Lexer) ([]Expr, error) {
 }
 
 type (
-	Func = func(context *EvalContext, args []Expr) (Expr, error)
+	Func func(context *EvalContext, args []Expr) (Expr, error)
 
 	EvalContext struct{ Scopes []EvalScope }
 	EvalScope   struct {
